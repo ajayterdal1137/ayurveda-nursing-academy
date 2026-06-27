@@ -12,7 +12,7 @@ import { theme } from "@/src/lib/theme";
 import { api } from "@/src/lib/api";
 
 type Support = {
-  phone: string; whatsapp: string; email: string; address: string;
+  phone: string; whatsapp: string; whatsapp_channel?: string; email: string; address: string;
   website: string; instagram: string; facebook: string; youtube: string; hours: string;
 };
 
@@ -164,7 +164,10 @@ export default function HelpScreen() {
 
               <View style={{ gap: 10, marginTop: 16 }}>
                 <ContactRow icon="phone" label="Call us" sub={info.phone} color="#3E8E41" onPress={() => call(info.phone)} testID="contact-call" />
-                <ContactRow icon="message-circle" label="WhatsApp" sub={info.whatsapp} color="#25D366" onPress={() => whatsapp(info.whatsapp)} testID="contact-whatsapp" />
+                <ContactRow icon="message-circle" label="WhatsApp chat" sub={info.whatsapp} color="#25D366" onPress={() => whatsapp(info.whatsapp)} testID="contact-whatsapp" />
+                {info.whatsapp_channel && (
+                  <ContactRow icon="radio" label="Join WhatsApp Channel" sub="Latest updates & announcements" color="#128C7E" onPress={() => openLink(info.whatsapp_channel!)} testID="contact-whatsapp-channel" />
+                )}
                 <ContactRow icon="mail" label="Email" sub={info.email} color="#C5A059" onPress={() => email(info.email)} testID="contact-email" />
                 <ContactRow icon="map-pin" label="Visit us" sub={info.address} color="#9E3C3C" onPress={() => openLink(`https://www.google.com/maps/search/${encodeURIComponent(info.address)}`)} testID="contact-map" />
                 <ContactRow icon="globe" label="Website" sub={info.website} color="#4A6B56" onPress={() => openLink(info.website)} testID="contact-web" />

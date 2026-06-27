@@ -605,14 +605,15 @@ class TicketCreate(BaseModel):
 @api_router.get('/support/info')
 async def support_info():
     return {
-        'phone': '+91 98765 43210',
-        'whatsapp': '+91 98765 43210',
-        'email': 'support@ayurveda.academy',
-        'address': 'Ayurveda Nursing Academy, Kerala, India',
-        'website': 'https://ayurveda.academy',
-        'instagram': 'https://instagram.com/ayurveda.academy',
-        'facebook': 'https://facebook.com/ayurveda.academy',
-        'youtube': 'https://youtube.com/@ayurveda.academy',
+        'phone': '+91 95380 09173',
+        'whatsapp': '+91 95380 09173',
+        'whatsapp_channel': 'https://whatsapp.com/channel/0029VbCQ1yYFy72KzKb2RI0S',
+        'email': 'dhari.dev.jd@gmail.com',
+        'address': 'Karnataka, India',
+        'website': 'https://ayurvedanursingacademy.in',
+        'instagram': 'https://instagram.com/dharis9173',
+        'facebook': 'https://facebook.com/ayurvedanursingacademy',
+        'youtube': 'https://youtube.com/@ayurvedanursingacademy',
         'hours': 'Mon - Sat · 9:00 AM to 7:00 PM IST',
     }
 
