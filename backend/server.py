@@ -76,6 +76,7 @@ class Course(BaseModel):
     rating: float = 4.7
     students_count: int = 0
     duration: str
+    access_period_days: int = 365
     lessons: List[Lesson] = []
     tags: List[str] = []
     featured: bool = False
@@ -92,6 +93,7 @@ class CourseCreate(BaseModel):
     price_inr: int
     price_usd: int
     duration: str
+    access_period_days: int = 365
     lessons: List[Lesson] = []
     tags: List[str] = []
     featured: bool = False
@@ -153,6 +155,7 @@ class Enrollment(BaseModel):
     progress: float = 0.0
     completed_lessons: List[str] = []
     enrolled_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    expires_at: Optional[str] = None
     certificate_issued: bool = False
 
 
@@ -206,6 +209,23 @@ async def current_user(authorization: Optional[str] = Header(None)):
     if not user:
         raise HTTPException(401, 'User not found')
     return user
+
+
+def _enrollment_status(enrollment: Optional[dict]) -> dict:
+    """Returns {enrolled, expired, expires_at, days_remaining} for an enrollment doc (or None)."""
+    if not enrollment:
+        return {'enrolled': False, 'expired': False, 'expires_at': None, 'days_remaining': None}
+    exp = enrollment.get('expires_at')
+    if not exp:
+        return {'enrolled': True, 'expired': False, 'expires_at': None, 'days_remaining': None}
+    try:
+        dt = datetime.fromisoformat(exp.replace('Z', '+00:00'))
+        now = datetime.now(timezone.utc)
+        expired = dt < now
+        days = max(0, (dt - now).days)
+        return {'enrolled': True, 'expired': expired, 'expires_at': exp, 'days_remaining': days}
+    except Exception:
+        return {'enrolled': True, 'expired': False, 'expires_at': exp, 'days_remaining': None}
 
 
 REFERRAL_BONUS_INR = 100
@@ -399,7 +419,8 @@ async def my_learning(user=Depends(current_user)):
     for e in enrolls:
         course = await db.courses.find_one({'id': e['course_id']}, {'_id': 0})
         if course:
-            result.append({**e, 'course': course})
+            status = _enrollment_status(e)
+            result.append({**e, 'course': course, 'expired': status['expired'], 'days_remaining': status['days_remaining']})
     return result
 
 
@@ -490,10 +511,14 @@ async def get_wallet(user=Depends(current_user)):
     }
 
 
+def _enrollment_status_local(enrollment: Optional[dict]) -> dict:
+    return _enrollment_status(enrollment)
+
+
 @api_router.get('/enrollments/check/{course_id}')
 async def check_enrollment(course_id: str, user=Depends(current_user)):
     e = await db.enrollments.find_one({'user_id': user['id'], 'course_id': course_id}, {'_id': 0})
-    return {'enrolled': bool(e), 'enrollment': e}
+    return {**_enrollment_status(e), 'enrollment': e}
 
 
 @api_router.get('/lessons/{lesson_id}/access')
@@ -505,8 +530,10 @@ async def lesson_access(lesson_id: str, course_id: str, user=Depends(current_use
     if not lesson:
         raise HTTPException(404, 'Lesson not found')
     enrolled = await db.enrollments.find_one({'user_id': user['id'], 'course_id': course_id})
-    allowed = bool(enrolled) or lesson.get('preview', False)
-    return {'allowed': allowed, 'lesson': lesson, 'is_preview': lesson.get('preview', False), 'enrolled': bool(enrolled)}
+    status = _enrollment_status(enrolled)
+    is_preview = lesson.get('preview', False)
+    allowed = is_preview or (status['enrolled'] and not status['expired'])
+    return {'allowed': allowed, 'lesson': lesson, 'is_preview': is_preview, **status}
 
 
 @api_router.get('/certificates/{enrollment_id}')
@@ -805,6 +832,19 @@ async def on_startup():
             updates['referral_code'] = gen_referral_code(u.get('name', 'AYR'))
         if updates:
             await db.users.update_one({'id': u['id']}, {'$set': updates})
+    # Migration: backfill access_period_days on courses + expires_at on existing enrollments
+    async for course in db.courses.find({}):
+        if course.get('access_period_days') is None:
+            await db.courses.update_one({'id': course['id']}, {'$set': {'access_period_days': 365}})
+    async for e in db.enrollments.find({'expires_at': None}):
+        c = await db.courses.find_one({'id': e['course_id']}, {'_id': 0})
+        period = (c or {}).get('access_period_days', 365)
+        if period and period > 0:
+            try:
+                base = datetime.fromisoformat(e['enrolled_at'].replace('Z', '+00:00'))
+            except Exception:
+                base = datetime.now(timezone.utc)
+            await db.enrollments.update_one({'id': e['id']}, {'$set': {'expires_at': (base + timedelta(days=period)).isoformat()}})
 
 
 # ============ Root ============
