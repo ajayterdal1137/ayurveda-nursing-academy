@@ -6,10 +6,14 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { theme } from "@/src/lib/theme";
 import { api } from "@/src/lib/api";
+import { useScreenshotProtection } from "@/src/hooks/useScreenshotProtection";
+import { ScreenshotToast } from "@/src/components/ScreenshotToast";
 
 export default function LessonPlayer() {
   const router = useRouter();
   const { id, courseId, type, url, title } = useLocalSearchParams<{ id: string; courseId: string; type: string; url: string; title: string }>();
+  const [shotVisible, setShotVisible] = React.useState(false);
+  useScreenshotProtection(() => setShotVisible(true));
 
   const viewerUrl =
     type === "pdf" || type === "word"
@@ -53,6 +57,7 @@ export default function LessonPlayer() {
           <Text style={styles.ctaText}>Mark as Complete</Text>
         </Pressable>
       </SafeAreaView>
+      <ScreenshotToast visible={shotVisible} onHide={() => setShotVisible(false)} />
     </View>
   );
 }

@@ -9,6 +9,8 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, run
 import * as Haptics from "expo-haptics";
 import { theme } from "@/src/lib/theme";
 import { api } from "@/src/lib/api";
+import { useScreenshotProtection } from "@/src/hooks/useScreenshotProtection";
+import { ScreenshotToast } from "@/src/components/ScreenshotToast";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const SWIPE = SCREEN_W * 0.28;
@@ -25,6 +27,8 @@ export default function QuizPlayer() {
   const [answers, setAnswers] = useState<number[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [result, setResult] = useState<{ score: number; total: number; percentage: number } | null>(null);
+  const [shotVisible, setShotVisible] = useState(false);
+  useScreenshotProtection(() => setShotVisible(true));
 
   useEffect(() => {
     api<Quiz>(`/quizzes/${id}`).then(q => { setQuiz(q); setAnswers(new Array(q.questions.length).fill(-1)); }).finally(() => setLoading(false));
@@ -155,6 +159,7 @@ export default function QuizPlayer() {
         )}
       </View>
       <Text style={styles.hint}>Swipe ← → between questions</Text>
+      <ScreenshotToast visible={shotVisible} onHide={() => setShotVisible(false)} />
     </SafeAreaView>
   );
 }

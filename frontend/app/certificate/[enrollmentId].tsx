@@ -8,6 +8,8 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { theme } from "@/src/lib/theme";
 import { api } from "@/src/lib/api";
+import { useScreenshotProtection } from "@/src/hooks/useScreenshotProtection";
+import { ScreenshotToast } from "@/src/components/ScreenshotToast";
 
 type Cert = {
   enrollment_id: string;
@@ -61,7 +63,9 @@ export default function CertificateScreen() {
   const [cert, setCert] = useState<Cert | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [shotVisible, setShotVisible] = useState(false);
   const printedRef = useRef(false);
+  useScreenshotProtection(() => setShotVisible(true));
 
   useEffect(() => {
     api<Cert>(`/certificates/${enrollmentId}`)
@@ -157,6 +161,7 @@ export default function CertificateScreen() {
           )}
         </Pressable>
       </ScrollView>
+      <ScreenshotToast visible={shotVisible} onHide={() => setShotVisible(false)} />
     </SafeAreaView>
   );
 }
