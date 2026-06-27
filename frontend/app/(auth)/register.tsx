@@ -23,6 +23,7 @@ export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [referral, setReferral] = useState("");
   const [role, setRole] = useState<"student" | "teacher" | "admin">("student");
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,7 +33,7 @@ export default function Register() {
     setErr(null);
     setLoading(true);
     try {
-      await register(name.trim(), email.trim(), password, role);
+      await register(name.trim(), email.trim(), password, role, referral.trim() || undefined);
       router.replace("/(tabs)/home");
     } catch (e: any) {
       setErr(e.message);
@@ -82,6 +83,10 @@ export default function Register() {
               <View style={styles.field}>
                 <Feather name="lock" size={16} color={theme.color.brand} />
                 <TextInput testID="register-password-input" style={styles.input} placeholder="Password (min 6)" placeholderTextColor={theme.color.onSurfaceTertiary} secureTextEntry value={password} onChangeText={setPassword} />
+              </View>
+              <View style={[styles.field, { borderColor: theme.color.brand, borderStyle: "dashed" as any }]}>
+                <Feather name="gift" size={16} color={theme.color.brand} />
+                <TextInput testID="register-referral-input" style={styles.input} placeholder="Referral code (optional) — earn ₹100" placeholderTextColor={theme.color.onSurfaceTertiary} autoCapitalize="characters" value={referral} onChangeText={setReferral} />
               </View>
 
               {err && <Text style={styles.err}>{err}</Text>}

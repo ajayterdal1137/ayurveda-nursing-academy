@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Platform, Share } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as Linking from "expo-linking";
 import { theme } from "@/src/lib/theme";
 import { api } from "@/src/lib/api";
 
@@ -30,6 +31,29 @@ export default function CourseDetail() {
 
   const iconFor = (t: string) => t === "video" ? "play-circle" : t === "pdf" ? "file-text" : "file";
 
+  const shareCourse = async (channel: "whatsapp" | "native") => {
+    const url = `https://ayurveda-learn-2.preview.emergentagent.com/course/${course.id}`;
+    const message = `🪔 Check out *${course.title}* on Ayurveda Nursing Academy!\n\n${course.subtitle}\n\n👨‍🏫 ${course.instructor}\n⏱ ${course.duration}\n💰 ₹${course.price_inr}\n\n${url}`;
+    if (channel === "whatsapp") {
+      const wa = `whatsapp://send?text=${encodeURIComponent(message)}`;
+      const fallback = `https://wa.me/?text=${encodeURIComponent(message)}`;
+      try {
+        const can = await Linking.canOpenURL(wa);
+        await Linking.openURL(can ? wa : fallback);
+      } catch {
+        Linking.openURL(fallback);
+      }
+    } else {
+      try {
+        if (Platform.OS === "web" && (navigator as any).share) {
+          await (navigator as any).share({ title: course.title, text: message, url });
+        } else if (Platform.OS !== "web") {
+          await Share.share({ message });
+        }
+      } catch {}
+    }
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.surface }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
@@ -37,7 +61,17 @@ export default function CourseDetail() {
           <Image source={{ uri: course.thumbnail }} style={styles.heroImg} contentFit="cover" />
           <LinearGradient colors={["rgba(10,13,11,0.3)", "transparent", "rgba(10,13,11,0.95)"]} style={StyleSheet.absoluteFill} />
           <SafeAreaView style={styles.heroSafe} edges={["top"]}>
-            <Pressable testID="back-button" onPress={() => router.back()} style={styles.back}><Feather name="chevron-left" size={24} color={theme.color.onSurface} /></Pressable>
+            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+              <Pressable testID="back-button" onPress={() => router.back()} style={styles.back}><Feather name="chevron-left" size={24} color={theme.color.onSurface} /></Pressable>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <Pressable testID="share-whatsapp-course" onPress={() => shareCourse("whatsapp")} style={[styles.back, { backgroundColor: "#25D366" }]}>
+                  <Feather name="message-circle" size={18} color="#FFFFFF" />
+                </Pressable>
+                <Pressable testID="share-native-course" onPress={() => shareCourse("native")} style={styles.back}>
+                  <Feather name="share-2" size={18} color={theme.color.onSurface} />
+                </Pressable>
+              </View>
+            </View>
           </SafeAreaView>
           <View style={styles.heroContent}>
             <Text style={styles.cat}>{course.category.toUpperCase()}</Text>

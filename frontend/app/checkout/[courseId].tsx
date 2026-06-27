@@ -23,9 +23,12 @@ export default function Checkout() {
   const [gateway, setGateway] = useState<Gateway>("razorpay");
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [wallet, setWallet] = useState(0);
+  const [useWallet, setUseWallet] = useState(false);
 
   useEffect(() => {
     api(`/courses/${courseId}`).then(setCourse).catch(() => {});
+    api<{ balance: number }>("/wallet").then(w => setWallet(w.balance)).catch(() => {});
   }, [courseId]);
 
   const pay = async () => {
@@ -33,8 +36,7 @@ export default function Checkout() {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       const m = METHODS.find(x => x.key === gateway)!;
-      const order = await api<any>("/payments/create-order", { method: "POST", body: { course_id: courseId, gateway, currency: m.currency } });
-      // Simulate gateway redirect / processing (MOCKED for MVP)
+      const order = await api<any>("/payments/create-order", { method: "POST", body: { course_id: courseId, gateway, currency: m.currency, apply_wallet: useWallet && m.currency === "INR" } });
       await new Promise(r => setTimeout(r, 1500));
       await api("/payments/verify", { method: "POST", body: { order_id: order.id, course_id: courseId } });
       setSuccess(true);
@@ -66,7 +68,10 @@ export default function Checkout() {
   }
 
   const selected = METHODS.find(m => m.key === gateway)!;
-  const amount = selected.currency === "INR" ? `₹${course.price_inr}` : `$${course.price_usd}`;
+  const basePrice = selected.currency === "INR" ? course.price_inr : course.price_usd;
+  const walletApplicable = selected.currency === "INR" && useWallet ? Math.min(wallet, basePrice) : 0;
+  const finalPrice = basePrice - walletApplicable;
+  const amount = selected.currency === "INR" ? `₹${finalPrice}` : `$${finalPrice}`;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.color.surface }}>
@@ -113,8 +118,26 @@ export default function Checkout() {
 
         <View style={styles.totalRow}>
           <Text style={styles.totalL}>Total</Text>
-          <Text style={styles.totalV}>{amount}</Text>
+          <View style={{ alignItems: "flex-end" }}>
+            {walletApplicable > 0 && <Text style={{ color: theme.color.onSurfaceTertiary, fontSize: 12, textDecorationLine: "line-through" }}>{selected.currency === "INR" ? `₹${basePrice}` : `$${basePrice}`}</Text>}
+            <Text style={styles.totalV}>{amount}</Text>
+          </View>
         </View>
+
+        {selected.currency === "INR" && wallet > 0 && (
+          <Pressable testID="apply-wallet" onPress={() => setUseWallet(!useWallet)} style={[styles.walletRow, useWallet && { borderColor: theme.color.brand }]}>
+            <View style={[styles.walletIcon, useWallet && { backgroundColor: theme.color.brand }]}>
+              <Feather name="gift" size={16} color={useWallet ? theme.color.onBrandPrimary : theme.color.brand} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.walletTitle}>Apply wallet credit</Text>
+              <Text style={styles.walletSub}>You have ₹{wallet} {useWallet && walletApplicable > 0 ? `· -₹${walletApplicable} applied` : ""}</Text>
+            </View>
+            <View style={[styles.toggle, useWallet && styles.toggleOn]}>
+              <View style={[styles.toggleDot, useWallet && { alignSelf: "flex-end", backgroundColor: theme.color.onBrandPrimary }]} />
+            </View>
+          </Pressable>
+        )}
 
         <Text style={styles.disclaimer}>This is a demo checkout — actual payment is simulated. In production, real Razorpay/Stripe SDK will be used.</Text>
       </ScrollView>
@@ -152,6 +175,13 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, backgroundColor: theme.color.surfaceSecondary, borderRadius: 14, borderWidth: 1, borderColor: theme.color.border },
   totalL: { color: theme.color.onSurfaceSecondary, fontSize: 14 },
   totalV: { color: theme.color.brand, fontSize: 22, fontWeight: "800" },
+  walletRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 14, backgroundColor: theme.color.surfaceSecondary, borderWidth: 1.5, borderColor: theme.color.border },
+  walletIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: theme.color.brandSecondary, alignItems: "center", justifyContent: "center" },
+  walletTitle: { color: theme.color.onSurface, fontWeight: "700", fontSize: 14 },
+  walletSub: { color: theme.color.onSurfaceTertiary, fontSize: 11, marginTop: 2 },
+  toggle: { width: 40, height: 22, borderRadius: 999, backgroundColor: theme.color.surfaceTertiary, padding: 2, justifyContent: "center" },
+  toggleOn: { backgroundColor: theme.color.brand },
+  toggleDot: { width: 18, height: 18, borderRadius: 9, backgroundColor: theme.color.onSurface },
   disclaimer: { color: theme.color.onSurfaceTertiary, fontSize: 11, lineHeight: 16, fontStyle: "italic" },
   payBar: { position: "absolute", left: 0, right: 0, bottom: 0, padding: 16, backgroundColor: theme.color.surfaceSecondary, borderTopWidth: 1, borderColor: theme.color.border },
   payBtn: { flexDirection: "row", gap: 8, height: 54, backgroundColor: theme.color.brand, borderRadius: 14, alignItems: "center", justifyContent: "center" },

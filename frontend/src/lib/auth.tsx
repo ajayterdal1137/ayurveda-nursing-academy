@@ -13,7 +13,7 @@ type AuthCtx = {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, role?: User['role']) => Promise<void>;
+  register: (name: string, email: string, password: string, role?: User['role'], referralCode?: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -56,10 +56,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(r.user);
   };
 
-  const register = async (name: string, email: string, password: string, role: User['role'] = 'student') => {
+  const register = async (name: string, email: string, password: string, role: User['role'] = 'student', referralCode?: string) => {
     const r = await api<{ token: string; user: User }>('/auth/register', {
       method: 'POST',
-      body: { name, email, password, role },
+      body: { name, email, password, role, referral_code: referralCode },
       auth: false,
     });
     await setToken(r.token);

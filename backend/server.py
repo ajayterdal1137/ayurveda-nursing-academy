@@ -36,6 +36,7 @@ class UserRegister(BaseModel):
     email: EmailStr
     password: str
     role: Literal['student', 'teacher', 'admin'] = 'student'
+    referral_code: Optional[str] = None
 
 
 class UserLogin(BaseModel):
@@ -159,6 +160,7 @@ class OrderRequest(BaseModel):
     course_id: str
     gateway: Literal['razorpay', 'stripe']
     currency: Literal['INR', 'USD']
+    apply_wallet: bool = False
 
 
 class VerifyPayment(BaseModel):
@@ -206,6 +208,13 @@ async def current_user(authorization: Optional[str] = Header(None)):
     return user
 
 
+REFERRAL_BONUS_INR = 100
+
+
+def gen_referral_code(name: str) -> str:
+    return (name[:3].upper() if name else "AYR") + uuid.uuid4().hex[:5].upper()
+
+
 # ============ Auth ============
 @api_router.post('/auth/register')
 async def register(payload: UserRegister):
@@ -213,6 +222,21 @@ async def register(payload: UserRegister):
     if existing:
         raise HTTPException(400, 'Email already registered')
     user_id = str(uuid.uuid4())
+    referrer_id = None
+    wallet = 0
+    if payload.referral_code:
+        ref = await db.users.find_one({'referral_code': payload.referral_code.strip().upper()})
+        if ref:
+            referrer_id = ref['id']
+            wallet = REFERRAL_BONUS_INR
+            # Credit referrer
+            await db.users.update_one({'id': referrer_id}, {'$inc': {'wallet_balance': REFERRAL_BONUS_INR}})
+            await db.wallet_txns.insert_one({
+                'id': str(uuid.uuid4()), 'user_id': referrer_id,
+                'amount': REFERRAL_BONUS_INR, 'kind': 'referral_credit',
+                'note': f"Friend {payload.name} signed up using your code",
+                'created_at': datetime.now(timezone.utc).isoformat(),
+            })
     user_doc = {
         'id': user_id,
         'name': payload.name,
@@ -220,9 +244,19 @@ async def register(payload: UserRegister):
         'role': payload.role,
         'password': hash_pw(payload.password),
         'avatar': None,
+        'wallet_balance': wallet,
+        'referral_code': gen_referral_code(payload.name),
+        'referred_by': referrer_id,
         'created_at': datetime.now(timezone.utc).isoformat(),
     }
     await db.users.insert_one(user_doc)
+    if wallet:
+        await db.wallet_txns.insert_one({
+            'id': str(uuid.uuid4()), 'user_id': user_id,
+            'amount': wallet, 'kind': 'referral_signup_bonus',
+            'note': 'Welcome bonus for using a referral code',
+            'created_at': datetime.now(timezone.utc).isoformat(),
+        })
     token = make_token(user_id, payload.role)
     user_doc.pop('password', None)
     user_doc.pop('_id', None)
@@ -395,6 +429,11 @@ async def create_order(payload: OrderRequest, user=Depends(current_user)):
     if not course:
         raise HTTPException(404, 'Course not found')
     amount = course['price_inr'] if payload.currency == 'INR' else course['price_usd']
+    wallet_applied = 0
+    if payload.apply_wallet and payload.currency == 'INR':
+        balance = (await db.users.find_one({'id': user['id']}, {'_id': 0})).get('wallet_balance', 0)
+        wallet_applied = min(balance, amount)
+        amount -= wallet_applied
     order = {
         'id': f"ord_{uuid.uuid4().hex[:16]}",
         'user_id': user['id'],
@@ -402,6 +441,7 @@ async def create_order(payload: OrderRequest, user=Depends(current_user)):
         'gateway': payload.gateway,
         'currency': payload.currency,
         'amount': amount,
+        'wallet_applied': wallet_applied,
         'status': 'created',
         'created_at': datetime.now(timezone.utc).isoformat(),
     }
@@ -412,16 +452,42 @@ async def create_order(payload: OrderRequest, user=Depends(current_user)):
 
 @api_router.post('/payments/verify')
 async def verify_payment(payload: VerifyPayment, user=Depends(current_user)):
-    # MOCKED verification — in production verify with Razorpay/Stripe signature.
     order = await db.orders.find_one({'id': payload.order_id, 'user_id': user['id']}, {'_id': 0})
     if not order:
         raise HTTPException(404, 'Order not found')
+    if order.get('wallet_applied', 0) > 0:
+        await db.users.update_one({'id': user['id']}, {'$inc': {'wallet_balance': -order['wallet_applied']}})
+        await db.wallet_txns.insert_one({
+            'id': str(uuid.uuid4()), 'user_id': user['id'],
+            'amount': -order['wallet_applied'], 'kind': 'course_purchase',
+            'note': f"Used for order {payload.order_id}",
+            'created_at': datetime.now(timezone.utc).isoformat(),
+        })
     await db.orders.update_one({'id': payload.order_id}, {'$set': {'status': 'paid'}})
     existing = await db.enrollments.find_one({'user_id': user['id'], 'course_id': payload.course_id})
     if not existing:
         enr = Enrollment(user_id=user['id'], course_id=payload.course_id)
         await db.enrollments.insert_one(enr.dict())
     return {'ok': True, 'status': 'paid'}
+
+
+# ============ Wallet & Referrals ============
+@api_router.get('/wallet')
+async def get_wallet(user=Depends(current_user)):
+    u = await db.users.find_one({'id': user['id']}, {'_id': 0, 'password': 0})
+    txns = await db.wallet_txns.find({'user_id': user['id']}, {'_id': 0}).sort('created_at', -1).to_list(50)
+    invited_count = await db.users.count_documents({'referred_by': user['id']})
+    if not u.get('referral_code'):
+        code = gen_referral_code(u.get('name', 'AYR'))
+        await db.users.update_one({'id': user['id']}, {'$set': {'referral_code': code, 'wallet_balance': u.get('wallet_balance', 0)}})
+        u['referral_code'] = code
+    return {
+        'balance': u.get('wallet_balance', 0),
+        'referral_code': u['referral_code'],
+        'referral_bonus': REFERRAL_BONUS_INR,
+        'invited_count': invited_count,
+        'transactions': txns,
+    }
 
 
 @api_router.get('/enrollments/check/{course_id}')
@@ -730,6 +796,15 @@ async def on_startup():
         if lessons and not lessons[0].get('preview'):
             lessons[0]['preview'] = True
             await db.courses.update_one({'id': course['id']}, {'$set': {'lessons': lessons}})
+    # Migration: backfill wallet/referral fields on existing users
+    async for u in db.users.find({}):
+        updates = {}
+        if 'wallet_balance' not in u:
+            updates['wallet_balance'] = 0
+        if not u.get('referral_code'):
+            updates['referral_code'] = gen_referral_code(u.get('name', 'AYR'))
+        if updates:
+            await db.users.update_one({'id': u['id']}, {'$set': updates})
 
 
 # ============ Root ============

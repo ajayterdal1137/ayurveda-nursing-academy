@@ -40,6 +40,15 @@ export default function ProfileScreen() {
             </Pressable>
           )}
 
+          <Pressable testID="goto-referral" onPress={() => router.push("/referral")} style={[styles.row, { borderColor: theme.color.brand }]}>
+            <View style={[styles.rowIcon, { backgroundColor: theme.color.brand }]}><Feather name="gift" size={16} color={theme.color.onBrandPrimary} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowLabel}>Refer & Earn ₹100</Text>
+              <Text style={styles.rowSub}>Invite friends, both get wallet credit</Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={theme.color.onSurfaceTertiary} />
+          </Pressable>
+
           <Pressable testID="goto-learning-certs" onPress={() => router.push("/(tabs)/learning")} style={styles.row}>
             <View style={styles.rowIcon}><Feather name="award" size={16} color={theme.color.brand} /></View>
             <Text style={styles.rowLabel}>{t("profile.certificates")}</Text>
