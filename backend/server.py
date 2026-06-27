@@ -590,8 +590,87 @@ async def admin_stats(user=Depends(current_user)):
         'students': await db.users.count_documents({'role': 'student'}),
         'enrollments': await db.enrollments.count_documents({}),
         'orders_paid': await db.orders.count_documents({'status': 'paid'}),
+        'tickets_open': await db.tickets.count_documents({'status': 'open'}),
     }
     return counts
+
+
+# ============ Support Tickets & Help ============
+class TicketCreate(BaseModel):
+    subject: str
+    category: str
+    description: str
+
+
+@api_router.get('/support/info')
+async def support_info():
+    return {
+        'phone': '+91 98765 43210',
+        'whatsapp': '+91 98765 43210',
+        'email': 'support@ayurveda.academy',
+        'address': 'Ayurveda Nursing Academy, Kerala, India',
+        'website': 'https://ayurveda.academy',
+        'instagram': 'https://instagram.com/ayurveda.academy',
+        'facebook': 'https://facebook.com/ayurveda.academy',
+        'youtube': 'https://youtube.com/@ayurveda.academy',
+        'hours': 'Mon - Sat · 9:00 AM to 7:00 PM IST',
+    }
+
+
+@api_router.post('/support/tickets')
+async def create_ticket(payload: TicketCreate, user=Depends(current_user)):
+    ticket = {
+        'id': f"TKT-{uuid.uuid4().hex[:8].upper()}",
+        'user_id': user['id'],
+        'user_name': user['name'],
+        'user_email': user['email'],
+        'subject': payload.subject,
+        'category': payload.category,
+        'description': payload.description,
+        'status': 'open',
+        'replies': [],
+        'created_at': datetime.now(timezone.utc).isoformat(),
+    }
+    await db.tickets.insert_one(ticket.copy())
+    ticket.pop('_id', None)
+    return ticket
+
+
+@api_router.get('/support/tickets')
+async def list_tickets(user=Depends(current_user)):
+    tickets = await db.tickets.find({'user_id': user['id']}, {'_id': 0}).sort('created_at', -1).to_list(100)
+    return tickets
+
+
+@api_router.get('/admin/tickets')
+async def admin_list_tickets(user=Depends(current_user)):
+    if user['role'] not in ('teacher', 'admin'):
+        raise HTTPException(403, 'Forbidden')
+    return await db.tickets.find({}, {'_id': 0}).sort('created_at', -1).to_list(500)
+
+
+class TicketReply(BaseModel):
+    message: str
+    close: bool = False
+
+
+@api_router.post('/admin/tickets/{ticket_id}/reply')
+async def admin_reply_ticket(ticket_id: str, payload: TicketReply, user=Depends(current_user)):
+    if user['role'] not in ('teacher', 'admin'):
+        raise HTTPException(403, 'Forbidden')
+    reply = {
+        'by': user['name'],
+        'role': user['role'],
+        'message': payload.message,
+        'at': datetime.now(timezone.utc).isoformat(),
+    }
+    update = {'$push': {'replies': reply}}
+    if payload.close:
+        update['$set'] = {'status': 'resolved'}
+    else:
+        update['$set'] = {'status': 'in_progress'}
+    await db.tickets.update_one({'id': ticket_id}, update)
+    return {'ok': True}
 
 
 # ============ Seed Data ============

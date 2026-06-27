@@ -66,8 +66,14 @@ export default function ProfileScreen() {
 
           {["bell", "credit-card", "help-circle", "settings"].map((icon, i) => {
             const labels = ["Notifications", "Payment Methods", "Help & Support", "Settings"];
+            const routes = [null, null, "/help", null];
             return (
-              <Pressable key={icon} testID={`profile-item-${labels[i]}`} style={styles.row}>
+              <Pressable
+                key={icon}
+                testID={`profile-item-${labels[i]}`}
+                onPress={() => { if (routes[i]) router.push(routes[i] as any); }}
+                style={styles.row}
+              >
                 <View style={styles.rowIcon}><Feather name={icon as any} size={16} color={theme.color.brand} /></View>
                 <Text style={styles.rowLabel}>{labels[i]}</Text>
                 <Feather name="chevron-right" size={18} color={theme.color.onSurfaceTertiary} />
