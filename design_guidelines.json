@@ -1,0 +1,187 @@
+{
+  "app_name": "Ayurveda Nursing Academy",
+  "personality": "6 Glass / Luxe DARK",
+  "personality_one_liner": "A premium, cinematic dark mode experience blending charcoal blacks with deep forest greens and antique gold to evoke traditional Ayurvedic wisdom and modern medical excellence.",
+  "color": {
+    "surface": "#0A0D0B",
+    "onSurface": "#E8E5DF",
+    "surfaceSecondary": "#141A16",
+    "onSurfaceSecondary": "#C2C0BA",
+    "surfaceTertiary": "#1E2620",
+    "onSurfaceTertiary": "#A3A09A",
+    "surfaceInverse": "#F5F2EA",
+    "onSurfaceInverse": "#0A0D0B",
+    "brand": "#C5A059",
+    "brandPrimary": "#C5A059",
+    "onBrandPrimary": "#140F00",
+    "brandSecondary": "#2B3B31",
+    "onBrandSecondary": "#F5F2EA",
+    "brandTertiary": "#3A4F41",
+    "onBrandTertiary": "#E8E5DF",
+    "success": "#3E8E41",
+    "onSuccess": "#FFFFFF",
+    "warning": "#C5A059",
+    "onWarning": "#140F00",
+    "error": "#9E3C3C",
+    "onError": "#FFFFFF",
+    "info": "#4A6B56",
+    "onInfo": "#FFFFFF",
+    "border": "#212823",
+    "borderStrong": "#3A453D",
+    "divider": "#1A221D"
+  },
+  "typography": {
+    "displayFontFamily": "Playfair Display",
+    "textFontFamily": "Satoshi",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous, cinematic padding. Use spacing to create focus rather than rigid lines. Card layouts should have plenty of breathing room.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "0",
+  "navigation": "bottom_tabs",
+  "icon_set": "Feather",
+  "glassmorphism": {
+    "enabled": "true",
+    "do's": [
+      "Use heavy frosted glass (blur with >=75% surface/surfaceSecondary tint) for bottom tab bar, sticky headers, and floating action buttons.",
+      "Apply glass overlays on top of hero images and course cards for a premium, cinematic feel.",
+      "Ensure text on glass is fully readable by using a sufficiently opaque under-tint."
+    ],
+    "dont's": [
+      "Do not use glass for text input fields or body content regions.",
+      "Do not stack more than two glass surfaces simultaneously."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Home / Course Catalog",
+      "purpose": "A premium discovery surface for Ayurveda courses, blending traditional imagery with modern Bento Grid layouts.",
+      "states": {
+        "loading": "Centered gold brand spinner on deep green surface.",
+        "empty": "Subtle glass icon with 'No courses available' and a refresh CTA.",
+        "error": "Error message with 'Retry' CTA."
+      },
+      "layout": "Implement a Bento Grid (mixed 1x1, 1x2, 2x2 cards) for discovering Daily Lessons, Featured Topics, and the core catalog. Use high-contrast Playfair Display typography overlaid on tinted imagery (gradient-to-dark scrim). Ensure safe-area clearance and large tap targets."
+    },
+    {
+      "name": "Course Detail",
+      "purpose": "Cinematic presentation of course content, converting interest into enrollment.",
+      "states": {
+        "loading": "Skeleton screen matching the hero and list layout.",
+        "empty": "N/A",
+        "error": "Failed to load course details. Retry."
+      },
+      "layout": "Large hero image stretching to the top edge (ignoring safe area for visual impact but padding content inside), with a vertical gradient scrim (transparent to 80% surfaceSecondary) behind the course title. Sticky primary CTA ('Enroll Now' / 'Buy') fixed at the bottom over a glassmorphic bar. Scrollable list of modules (PDF, Word, Video) underneath."
+    },
+    {
+      "name": "Lesson Player",
+      "purpose": "Immersive, distraction-free environment for reading PDFs, Word docs, or watching videos.",
+      "states": {
+        "loading": "Spinner centered.",
+        "empty": "No lesson content.",
+        "error": "Failed to load media."
+      },
+      "layout": "Full-bleed video player at top or integrated PDF/Doc viewer. Dark UI controls to minimize eye strain. Sticky 'Next Lesson' CTA at bottom."
+    },
+    {
+      "name": "MCQ Quiz",
+      "purpose": "Gamified, Tinder-like swipe card interface for answering questions.",
+      "states": {
+        "loading": "Spinner.",
+        "empty": "No quiz available.",
+        "error": "Failed to load quiz."
+      },
+      "layout": "Stacked card UI centered on the screen. The top card shows the question and image. User swipes left or right to navigate between questions or select options. Cards should have a subtle 3D shadow and smooth reanimated gestures. Progress bar at the top."
+    },
+    {
+      "name": "My Learning",
+      "purpose": "Track progress, view certificates, and manage ongoing courses.",
+      "states": {
+        "loading": "Skeleton list.",
+        "empty": "Illustration of a brass lamp with 'Your learning journey begins here.' + 'Browse Courses' CTA.",
+        "error": "Failed to load progress."
+      },
+      "layout": "List-based view with rich surfaceSecondary cards displaying progress bars and course thumbnails. Dedicated section or tabs for 'Active', 'Completed', and 'Certificates'."
+    },
+    {
+      "name": "Notes",
+      "purpose": "A reflective, quiet space for students to review personal notes.",
+      "states": {
+        "loading": "Skeleton list.",
+        "empty": "Illustration of a leaf + 'No notes yet. Add your first insight.'",
+        "error": "Failed to load notes."
+      },
+      "layout": "Grid or masonry layout of note cards. Floating Action Button (glass over brandTertiary) to create a new note."
+    },
+    {
+      "name": "Profile",
+      "purpose": "User management, achievements, and settings.",
+      "states": {
+        "loading": "Spinner.",
+        "empty": "N/A",
+        "error": "Failed to load profile."
+      },
+      "layout": "Large avatar (or initials if missing) centered. List of settings and achievements using brandTertiary tinted icons for list leading visuals."
+    }
+  ],
+  "images": {
+    "logo_fallback": {
+      "url": "https://images.pexels.com/photos/36873193/pexels-photo-36873193.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "alt": "Brass oil lamp symbolizing knowledge and tradition"
+    },
+    "course_herbs": {
+      "url": "https://images.pexels.com/photos/36863397/pexels-photo-36863397.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "alt": "Dried herbal leaves in bags"
+    },
+    "course_massage": {
+      "url": "https://images.pexels.com/photos/6187847/pexels-photo-6187847.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "alt": "Hand holding wooden massage tool on dark background"
+    },
+    "nursing_student": {
+      "url": "https://images.unsplash.com/photo-1624727828489-a1e03b79bba8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDJ8MHwxfHNlYXJjaHwyfHxudXJzaW5nJTIwc3R1ZGVudHxlbnwwfHx8fDE3ODI1MzY2OTB8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Nursing student with stethoscope"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Adhere STRICTLY to the Glass / Luxe DARK personality. No blue, indigo, or purple colors. The UI is anchored in deep charcoal green (surface: #0A0D0B) and Antique Gold (brand: #C5A059).",
+    "Use Playfair Display for display/headings to evoke academic prestige and tradition, paired with Satoshi for high readability in body text.",
+    "For the Home screen, use a Bento Grid layout for course discovery. Cards should vary in size (e.g., 2x2 featured, 1x2 secondary) to create a magazine-like Pinterest flow.",
+    "Implement the MCQ Quiz screen using 'react-native-reanimated' and 'react-native-gesture-handler' to create a Tinder-like swipeable card stack. Ensure cards snap back if not swiped past the threshold.",
+    "Any text placed over images MUST have a 3-stop vertical gradient scrim (transparent to >=75% surfaceInverse/surfaceSecondary) behind it. Do not rely on raw image contrast.",
+    "Include a Razorpay/Stripe checkout screen/modal as part of the 'Buy/Enroll' flow from the Course Detail screen.",
+    "Use 'react-native-pdf' or similar for PDF viewing, and 'expo-av' or 'react-native-video' for the media player.",
+    "Wire haptics to the Quiz swipe actions (success/error vibration depending on swipe) and to the primary Enroll buttons."
+  ]
+}
