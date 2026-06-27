@@ -6,8 +6,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import * as Linking from "expo-linking";
 import { theme } from "@/src/lib/theme";
 import { api } from "@/src/lib/api";
+import { useAuth } from "@/src/lib/auth";
 
 type Gateway = "razorpay" | "stripe";
 
@@ -18,8 +20,10 @@ const METHODS: { key: Gateway; name: string; tag: string; icon: any; currency: "
 
 export default function Checkout() {
   const router = useRouter();
+  const { user } = useAuth();
   const { courseId } = useLocalSearchParams<{ courseId: string }>();
   const [course, setCourse] = useState<any>(null);
+  const [support, setSupport] = useState<any>(null);
   const [gateway, setGateway] = useState<Gateway>("razorpay");
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -29,6 +33,7 @@ export default function Checkout() {
   useEffect(() => {
     api(`/courses/${courseId}`).then(setCourse).catch(() => {});
     api<{ balance: number }>("/wallet").then(w => setWallet(w.balance)).catch(() => {});
+    api("/support/info").then(setSupport).catch(() => {});
   }, [courseId]);
 
   const pay = async () => {
@@ -51,18 +56,52 @@ export default function Checkout() {
   if (!course) return <View style={styles.center}><ActivityIndicator color={theme.color.brand} /></View>;
 
   if (success) {
+    const sendWhatsApp = () => {
+      const num = (support?.whatsapp || "").replace(/[^0-9]/g, "");
+      const msg = `🪔 Hi! I just enrolled in *${course.title}* on Ayurveda Nursing Academy.\n\nMy name: ${user?.name || ""}\nEmail: ${user?.email || ""}\n\nCould you please help me get started?`;
+      const url = num ? `https://wa.me/${num}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+      Linking.openURL(url).catch(() => {});
+    };
+    const joinChannel = () => {
+      if (support?.whatsapp_channel) Linking.openURL(support.whatsapp_channel).catch(() => {});
+    };
+
     return (
-      <SafeAreaView style={[styles.center, { backgroundColor: theme.color.surface, padding: 24 }]}>
-        <View style={styles.successCard}>
-          <View style={styles.tickWrap}><Feather name="check" size={42} color={theme.color.onBrandPrimary} /></View>
-          <Text style={styles.successTitle}>Payment Successful</Text>
-          <Text style={styles.successSub}>You are now enrolled in</Text>
-          <Text style={styles.successCourse}>{course.title}</Text>
-          <Pressable testID="goto-course" onPress={() => router.replace(`/course/${courseId}`)} style={styles.cta}>
-            <Text style={styles.ctaText}>Start Learning</Text>
-            <Feather name="arrow-right" size={18} color={theme.color.onBrandPrimary} />
-          </Pressable>
-        </View>
+      <SafeAreaView style={[styles.center, { backgroundColor: theme.color.surface, padding: 20 }]}>
+        <ScrollView contentContainerStyle={{ paddingVertical: 20 }} showsVerticalScrollIndicator={false}>
+          <View style={styles.successCard}>
+            <View style={styles.tickWrap}><Feather name="check" size={42} color={theme.color.onBrandPrimary} /></View>
+            <Text style={styles.successTitle}>Payment Successful</Text>
+            <Text style={styles.successSub}>Welcome to</Text>
+            <Text style={styles.successCourse}>{course.title}</Text>
+
+            <View style={styles.welcomeBox}>
+              <Text style={styles.welcomeTitle}>🎉 Get started in 3 steps</Text>
+              <Text style={styles.welcomeStep}>1. Tap "Start Learning" to begin your first lesson</Text>
+              <Text style={styles.welcomeStep}>2. Join our WhatsApp Channel for updates & live class alerts</Text>
+              <Text style={styles.welcomeStep}>3. Message us anytime if you need help</Text>
+            </View>
+
+            <Pressable testID="goto-course" onPress={() => router.replace(`/course/${courseId}`)} style={styles.cta}>
+              <Feather name="play-circle" size={18} color={theme.color.onBrandPrimary} />
+              <Text style={styles.ctaText}>Start Learning</Text>
+            </Pressable>
+
+            {support?.whatsapp_channel && (
+              <Pressable testID="join-whatsapp-channel" onPress={joinChannel} style={[styles.successBtn, { backgroundColor: "#128C7E" }]}>
+                <Feather name="radio" size={18} color="#FFFFFF" />
+                <Text style={[styles.successBtnText, { color: "#FFFFFF" }]}>Join WhatsApp Channel</Text>
+              </Pressable>
+            )}
+
+            <Pressable testID="message-whatsapp-support" onPress={sendWhatsApp} style={[styles.successBtn, { backgroundColor: "#25D366" }]}>
+              <Feather name="message-circle" size={18} color="#FFFFFF" />
+              <Text style={[styles.successBtnText, { color: "#FFFFFF" }]}>Message us on WhatsApp</Text>
+            </Pressable>
+
+            <Text style={styles.bonusText}>💡 Tip: A certificate with your name will be issued when you complete all lessons.</Text>
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -186,11 +225,17 @@ const styles = StyleSheet.create({
   payBar: { position: "absolute", left: 0, right: 0, bottom: 0, padding: 16, backgroundColor: theme.color.surfaceSecondary, borderTopWidth: 1, borderColor: theme.color.border },
   payBtn: { flexDirection: "row", gap: 8, height: 54, backgroundColor: theme.color.brand, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   payBtnText: { color: theme.color.onBrandPrimary, fontWeight: "800", fontSize: 15 },
-  successCard: { alignItems: "center", padding: 32, gap: 6, backgroundColor: theme.color.surfaceSecondary, borderRadius: 24, borderWidth: 1, borderColor: theme.color.border, width: "100%" },
+  successCard: { alignItems: "center", padding: 28, gap: 6, backgroundColor: theme.color.surfaceSecondary, borderRadius: 24, borderWidth: 1, borderColor: theme.color.border, width: "100%" },
   tickWrap: { width: 84, height: 84, borderRadius: 42, backgroundColor: theme.color.brand, alignItems: "center", justifyContent: "center", marginBottom: 12 },
   successTitle: { color: theme.color.onSurface, fontSize: 22, fontWeight: "800" },
   successSub: { color: theme.color.onSurfaceSecondary, marginTop: 4 },
   successCourse: { color: theme.color.brand, fontSize: 16, fontWeight: "700", marginTop: 4, textAlign: "center" },
-  cta: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 22, backgroundColor: theme.color.brand, paddingHorizontal: 26, paddingVertical: 14, borderRadius: 999 },
+  welcomeBox: { width: "100%", padding: 16, borderRadius: 14, backgroundColor: theme.color.surfaceTertiary, borderWidth: 1, borderColor: theme.color.border, marginTop: 18, gap: 6 },
+  welcomeTitle: { color: theme.color.brand, fontSize: 13, fontWeight: "800", marginBottom: 4 },
+  welcomeStep: { color: theme.color.onSurfaceSecondary, fontSize: 12, lineHeight: 18 },
+  cta: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 18, backgroundColor: theme.color.brand, paddingHorizontal: 22, paddingVertical: 14, borderRadius: 14, width: "100%", justifyContent: "center" },
   ctaText: { color: theme.color.onBrandPrimary, fontWeight: "800", fontSize: 15 },
+  successBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10, paddingHorizontal: 22, paddingVertical: 13, borderRadius: 14, width: "100%" },
+  successBtnText: { fontWeight: "800", fontSize: 14 },
+  bonusText: { color: theme.color.onSurfaceTertiary, fontSize: 11, textAlign: "center", marginTop: 16, fontStyle: "italic" },
 });
