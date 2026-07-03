@@ -3,7 +3,8 @@ FROM node:18-alpine
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --only=production
+# Use npm install instead of npm ci when package-lock.json may be missing
+RUN npm install --production --no-optional
 
 COPY . .
 
