@@ -1,0 +1,13 @@
+{
+  "name": "ena-web",
+  "version": "0.1.0",
+  "description": "Emergents - Ayurveda Nursing Academy example web service",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "pg": "^8.10.0"
+  }
+}
