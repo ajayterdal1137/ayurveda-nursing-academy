@@ -1,0 +1,8 @@
+body{font-family:Arial,Helvetica,sans-serif;max-width:900px;margin:24px auto;padding:0 16px}
+header h1{font-size:20px;margin:0 0 12px}
+#courses-list{display:flex;flex-direction:column;gap:10px}
+.course{border:1px solid #ddd;padding:10px;border-radius:6px}
+.course h4{margin:0 0 6px}
+.hidden{display:none}
+button{cursor:pointer}
+#lessons-list{list-style:decimal;padding-left:20px}
